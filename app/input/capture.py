@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Webcam capture demo with YOLOv5 object detection.
-Uses the detection module in ``app.perception.detect`` and configuration
-from ``app.config``.
+"""Webcam capture demo with YOLOv5 detection **and** simple tracking.
 """
 
 import cv2
 import sys
 import time
+
 from app.perception.detect import detect
-from app.config import DETECTION_CONFIDENCE
+from app.perception.tracker import Tracker
+from app.config import (
+    DETECTION_CONFIDENCE,
+    TRACK_MAX_AGE,
+    TRACK_MIN_HITS,
+    TRACK_IOU_THRESHOLD,
+)
 
 
 def main():
@@ -16,6 +21,13 @@ def main():
     if not cap.isOpened():
         sys.exit('❌ Cannot open webcam')
     print('✅ Webcam opened – press q to quit')
+
+    tracker = Tracker(
+        max_age=TRACK_MAX_AGE,
+        min_hits=TRACK_MIN_HITS,
+        iou_threshold=TRACK_IOU_THRESHOLD,
+    )
+
     prev = time.time()
 
     while True:
@@ -24,12 +36,24 @@ def main():
             print('⚠️ Frame capture failed')
             break
 
-        # Run object detection
+        # -------- Detection ----------
         detections = detect(frame, conf_thresh=DETECTION_CONFIDENCE)
-        # Draw detections
+
+        # DEBUG: show raw detections (first few)
+        if detections:
+            print('[DEBUG] detections:', detections[:3])
+        else:
+            print('[DEBUG] No detections on this frame')
+
+        # -------- Tracking ----------
+        detections = tracker.update(detections)
+
+        # Draw detections + track IDs (guard against missing keys)
         for det in detections:
+            if not all(k in det for k in ("bbox", "label", "confidence", "object_id")):
+                continue
             x1, y1, x2, y2 = det["bbox"]
-            label = f"{det['label']} {det['confidence']:.2f}"
+            label = f"{det['label']} {det['confidence']:.2f} (ID:{det['object_id']})"
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(
                 frame,
@@ -56,7 +80,7 @@ def main():
             2,
         )
 
-        cv2.imshow('Sentinel – Detection', frame)
+        cv2.imshow('Sentinel – Detection + Tracking', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
