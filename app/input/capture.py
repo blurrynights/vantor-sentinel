@@ -6,6 +6,8 @@ import cv2
 import sys
 import time
 
+import logging
+import os
 from app.perception.detect import detect
 from app.perception.tracker import Tracker
 from app.config import (
@@ -13,7 +15,23 @@ from app.config import (
     TRACK_MAX_AGE,
     TRACK_MIN_HITS,
     TRACK_IOU_THRESHOLD,
+    DEBUG_LOGGING,
+    DEBUG_LOG_PATH,
 )
+
+# Setup logger for debug output
+logger = logging.getLogger('capture')
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    if DEBUG_LOGGING:
+        os.makedirs(os.path.dirname(DEBUG_LOG_PATH), exist_ok=True)
+        file_handler = logging.FileHandler(DEBUG_LOG_PATH)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    else:
+        logger.addHandler(logging.NullHandler())
+
 
 
 def main():
@@ -40,10 +58,10 @@ def main():
         detections = detect(frame, conf_thresh=DETECTION_CONFIDENCE)
 
         # DEBUG: show raw detections (first few)
-        if detections:
-            print('[DEBUG] detections:', detections[:3])
+        if DEBUG_LOGGING and detections:
+            logger.debug(f"Detections: {detections[:3]}")
         else:
-            print('[DEBUG] No detections on this frame')
+            logger.debug("No detections on this frame")
 
         # -------- Tracking ----------
         detections = tracker.update(detections)
