@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Webcam capture demo with YOLOv5 detection **and** simple tracking.
-"""
-
 import cv2
 import sys
 import time
@@ -19,7 +15,6 @@ from app.config import (
     DEBUG_LOG_PATH,
 )
 
-# Setup logger for debug output
 logger = logging.getLogger('capture')
 logger.setLevel(logging.DEBUG)
 if not logger.handlers:
@@ -35,10 +30,10 @@ if not logger.handlers:
 
 
 def main():
-    cap = cv2.VideoCapture(0)  # default webcam
+    cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        sys.exit('❌ Cannot open webcam')
-    print('✅ Webcam opened – press q to quit')
+        sys.exit('Cannot open webcam')
+    print('Webcam opened – press q to quit')
 
     tracker = Tracker(
         max_age=TRACK_MAX_AGE,
@@ -51,22 +46,18 @@ def main():
     while True:
         ret, frame = cap.read()
         if not ret:
-            print('⚠️ Frame capture failed')
+            print('Frame capture failed')
             break
 
-        # -------- Detection ----------
         detections = detect(frame, conf_thresh=DETECTION_CONFIDENCE)
 
-        # DEBUG: show raw detections (first few)
         if DEBUG_LOGGING and detections:
             logger.debug(f"Detections: {detections[:3]}")
         else:
             logger.debug("No detections on this frame")
 
-        # -------- Tracking ----------
         detections = tracker.update(detections)
 
-        # Draw detections + track IDs (guard against missing keys)
         for det in detections:
             if not all(k in det for k in ("bbox", "label", "confidence", "object_id")):
                 continue
@@ -84,7 +75,6 @@ def main():
                 cv2.LINE_AA,
             )
 
-        # Show FPS
         now = time.time()
         fps = 1.0 / (now - prev)
         prev = now
